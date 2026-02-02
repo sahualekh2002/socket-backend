@@ -1,125 +1,156 @@
+// ---------------------------
+// STRANGER CHAT SERVER
+// ---------------------------
+
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
 
+// ---------------------------
+// APP SETUP
+// ---------------------------
 const app = express();
-app.use(cors());
+app.use(cors()); // allow cross-origin requests
 
 const server = http.createServer(app);
+
 const io = new Server(server, {
-  cors: { origin: "*" },
+  cors: { origin: "*" }, // allow any origin for socket.io
 });
 
-let waitingUser = null;
-let onlineUsers = 0;
+// ---------------------------
+// GLOBAL VARIABLES
+// ---------------------------
+let waitingUser = null;   // socket waiting for a stranger
+let onlineUsers = 0;      // total connected users
 
-const bannedWords = [
-  "sex",
-  "fuck",
-  "fucking",
-  "porn",
-  "nude",
-  "nudes",
-  "xxx",
-];
-
-function containsBannedWords(text = "") {
-  const lower = text.toLowerCase();
-  return bannedWords.some((word) => lower.includes(word));
-}
-
-
-
-
+// ---------------------------
+// SOCKET CONNECTION
+// ---------------------------
 io.on("connection", (socket) => {
   onlineUsers++;
-  io.emit("onlineCount", onlineUsers);
 
-  socket.partner = null;
+  // 🔔 Notify all users of online count
+  io.emit("status", {
+    type: "online",
+    count: onlineUsers,
+  });
+
+  console.log("USER CONNECTED:", socket.id);
+
+  // Initialize socket properties
+  socket.partner = null;   // connected stranger
   socket.isWaiting = false;
 
-  console.log("User connected:", socket.id);
-
-  // ---------------------------
-  // JOIN CHAT
-  // ---------------------------
+  // ---------------- JOIN CHAT ----------------
   socket.on("join", () => {
-    // ❌ already in chat → ignore
-    if (socket.partner) return;
+    console.log("JOIN REQUEST:", socket.id);
 
-    // ❌ same socket trying again
-    if (waitingUser && waitingUser.id === socket.id) return;
+    // Send searching status to this user
+    socket.emit("status", {
+      type: "searching",
+      message: "Searching for a stranger...",
+    });
 
-    // ✅ match if someone is waiting
-    if (waitingUser && !waitingUser.partner) {
+    // If already matched or waiting, ignore
+    if (socket.partner || socket.isWaiting) return;
+
+    // If someone is waiting, match with them
+    if (waitingUser && waitingUser.id !== socket.id) {
+      // ✅ MATCH FOUND
       socket.partner = waitingUser;
       waitingUser.partner = socket;
 
       socket.isWaiting = false;
       waitingUser.isWaiting = false;
 
+      // Notify both users
       socket.emit("matched");
       waitingUser.emit("matched");
 
-      waitingUser = null;
+      socket.emit("status", {
+        type: "matched",
+        message: "You are now connected to a stranger",
+      });
+
+      waitingUser.emit("status", {
+        type: "matched",
+        message: "You are now connected to a stranger",
+      });
+
+      waitingUser = null; // clear waiting user
     } else {
-      // ✅ put in waiting queue
+      // 🕒 No one waiting, set this socket as waiting
       waitingUser = socket;
       socket.isWaiting = true;
+
+      socket.emit("status", {
+        type: "waiting",
+        message: "Waiting for another user...",
+      });
     }
   });
 
-  // ---------------------------
-  // TYPING
-  // ---------------------------
+  // ---------------- MESSAGE ----------------
+  socket.on("message", (msg) => {
+    if (!socket.partner) return; // only send if connected
+    socket.partner.emit("message", {
+      sender: "stranger",
+      text: msg,
+    });
+  });
+
+  // ---------------- TYPING INDICATOR ----------------
   socket.on("typing", () => {
     if (socket.partner) {
-      socket.partner.emit("typing");
+      socket.partner.emit("typing"); // forward typing event to partner
     }
   });
 
-  // ---------------------------
-  // MESSAGE
-  // ---------------------------
-  socket.on("message", (msg) => {
-    if (!socket.partner) return;
-
-    // 🚫 block banned words
-    if (containsBannedWords(msg)) {
-      return; // silently block
-    }
-
-    socket.partner.emit("message", msg);
-  });
-
-  // ---------------------------
-  // DISCONNECT
-  // ---------------------------
+  // ---------------- DISCONNECT ----------------
   socket.on("disconnect", () => {
     onlineUsers--;
-    io.emit("onlineCount", onlineUsers);
 
-    // notify partner
+    // Update all users with online count
+    io.emit("status", {
+      type: "online",
+      count: onlineUsers,
+    });
+
+    console.log("USER DISCONNECTED:", socket.id);
+
+    // Notify partner if connected
     if (socket.partner) {
-      socket.partner.emit("system", "Stranger disconnected.");
+      socket.partner.emit("message", {
+        sender: "system",
+        text: "Stranger disconnected.",
+      });
+
+      socket.partner.emit("status", {
+        type: "disconnected",
+        message: "Stranger left the chat",
+      });
+
       socket.partner.partner = null;
+      socket.partner.isWaiting = false;
     }
 
-    // clear waiting user safely
+    // Clear waiting user if this socket was waiting
     if (waitingUser && waitingUser.id === socket.id) {
       waitingUser = null;
     }
 
+    // Reset socket properties
     socket.partner = null;
     socket.isWaiting = false;
-
-    console.log("User disconnected:", socket.id);
   });
 });
 
+// ---------------------------
+// START SERVER
+// ---------------------------
 const PORT = process.env.PORT || 4000;
-
 server.listen(PORT, () => {
-  console.log("Socket server running on port", PORT);
+  console.log("SERVER RUNNING ON PORT", PORT);
 });
