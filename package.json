@@ -3,9 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  
   "scripts": {
-    
     "start": "node server.js"
   },
   "keywords": [],
@@ -17,6 +15,13 @@
     "emoji-picker-react": "^4.16.1",
     "express": "^5.2.1",
     "socket.io": "^4.8.3"
-  }
-  
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sahualekh2002/socket-backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sahualekh2002/socket-backend/issues"
+  },
+  "homepage": "https://github.com/sahualekh2002/socket-backend#readme"
 }

@@ -31,11 +31,14 @@ let onlineUsers = 0;      // total connected users
 io.on("connection", (socket) => {
   onlineUsers++;
 
-  // 🔔 Notify all users of online count
+  // 🔔 Notify all users of online count (existing)
   io.emit("status", {
     type: "online",
     count: onlineUsers,
   });
+
+  // ✅ ADD THIS (for /counter page)
+  io.emit("online-users", onlineUsers);
 
   console.log("USER CONNECTED:", socket.id);
 
@@ -47,25 +50,20 @@ io.on("connection", (socket) => {
   socket.on("join", () => {
     console.log("JOIN REQUEST:", socket.id);
 
-    // Send searching status to this user
     socket.emit("status", {
       type: "searching",
       message: "Searching for a stranger...",
     });
 
-    // If already matched or waiting, ignore
     if (socket.partner || socket.isWaiting) return;
 
-    // If someone is waiting, match with them
     if (waitingUser && waitingUser.id !== socket.id) {
-      // ✅ MATCH FOUND
       socket.partner = waitingUser;
       waitingUser.partner = socket;
 
       socket.isWaiting = false;
       waitingUser.isWaiting = false;
 
-      // Notify both users
       socket.emit("matched");
       waitingUser.emit("matched");
 
@@ -79,9 +77,8 @@ io.on("connection", (socket) => {
         message: "You are now connected to a stranger",
       });
 
-      waitingUser = null; // clear waiting user
+      waitingUser = null;
     } else {
-      // 🕒 No one waiting, set this socket as waiting
       waitingUser = socket;
       socket.isWaiting = true;
 
@@ -94,7 +91,7 @@ io.on("connection", (socket) => {
 
   // ---------------- MESSAGE ----------------
   socket.on("message", (msg) => {
-    if (!socket.partner) return; // only send if connected
+    if (!socket.partner) return;
     socket.partner.emit("message", {
       sender: "stranger",
       text: msg,
@@ -104,7 +101,7 @@ io.on("connection", (socket) => {
   // ---------------- TYPING INDICATOR ----------------
   socket.on("typing", () => {
     if (socket.partner) {
-      socket.partner.emit("typing"); // forward typing event to partner
+      socket.partner.emit("typing");
     }
   });
 
@@ -112,15 +109,17 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     onlineUsers--;
 
-    // Update all users with online count
+    // Update all users with online count (existing)
     io.emit("status", {
       type: "online",
       count: onlineUsers,
     });
 
+    // ✅ ADD THIS (for /counter page)
+    io.emit("online-users", onlineUsers);
+
     console.log("USER DISCONNECTED:", socket.id);
 
-    // Notify partner if connected
     if (socket.partner) {
       socket.partner.emit("message", {
         sender: "system",
@@ -136,12 +135,10 @@ io.on("connection", (socket) => {
       socket.partner.isWaiting = false;
     }
 
-    // Clear waiting user if this socket was waiting
     if (waitingUser && waitingUser.id === socket.id) {
       waitingUser = null;
     }
 
-    // Reset socket properties
     socket.partner = null;
     socket.isWaiting = false;
   });
