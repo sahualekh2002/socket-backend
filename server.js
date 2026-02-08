@@ -1,18 +1,90 @@
 // ---------------------------
-// STRANGER CHAT SERVER
+// STRANGER CHAT SERVER + CONTACT FORM
 // ---------------------------
 
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const cors = require("cors");
+const nodemailer = require("nodemailer");
+const multer = require("multer");
 
 // ---------------------------
 // APP SETUP
 // ---------------------------
 const app = express();
-app.use(cors()); // allow cross-origin requests
 
+// Enable JSON parsing for API requests
+app.use(express.json());
+
+// CORS for frontend (replace with your Vercel URL)
+app.use(cors({
+  origin: [
+    "https://strange-frontend-updated2.vercel.app",
+    "https://strangerschat.fun",
+    "https://strangchat.in"
+  ],
+  methods: ["POST", "GET"]
+}));
+
+
+// For file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage,
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB max
+});
+
+// ---------------------------
+// CONTACT FORM ROUTE
+// ---------------------------
+app.post("/send", upload.single("photo"), async (req, res) => {
+  try {
+    const { name, email, message } = req.body;
+    const photo = req.file;
+
+    if (!name || !message) {
+      return res.status(400).json({ error: "Name and message are required." });
+    }
+
+    // Prepare attachments if photo uploaded
+    let attachments = [];
+    if (photo) {
+      attachments.push({
+        filename: photo.originalname || "screenshot.png",
+        content: photo.buffer,
+        contentType: photo.mimetype,
+      });
+    }
+
+    // Nodemailer transporter
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS, // Gmail App Password
+      },
+    });
+
+    // Send email
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: process.env.EMAIL_TO,
+      subject: "New Contact Form Submission",
+      text: `New contact form message:\n\nName: ${name}\nEmail: ${email || "Not provided"}\nMessage:\n${message}`,
+      attachments,
+    });
+
+    return res.status(200).json({ success: true });
+  } catch (err) {
+    console.error("CONTACT FORM ERROR:", err);
+    return res.status(500).json({ error: err.message || "Failed to send email." });
+  }
+});
+
+// ---------------------------
+// SOCKET.IO SETUP
+// ---------------------------
 const server = http.createServer(app);
 
 const io = new Server(server, {
@@ -143,16 +215,6 @@ io.on("connection", (socket) => {
     socket.isWaiting = false;
   });
 });
-
-
-
-
-
-
-
-
-
-
 
 // ---------------------------
 // START SERVER
