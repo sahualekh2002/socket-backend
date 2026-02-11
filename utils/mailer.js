@@ -1,18 +1,18 @@
-
-
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 587,          // ✅ use 587 (NOT 465)
-  secure: false,      // ✅ false for 587
-  // family: 4,
+  port: 587,
+  secure: false,          // TLS
+  family: 4,              // 🔧 Force IPv4 (very important on Railway)
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS,
   },
 });
-
 
 module.exports = async function sendMail({ name, email, message, attachments = [] }) {
   await transporter.sendMail({
