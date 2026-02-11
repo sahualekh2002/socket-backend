@@ -21,6 +21,8 @@ app.use(cors({
     "https://strange-frontend-updated2.vercel.app",
     "https://strangerschat.fun",
     "https://strangchat.in",
+        "https://www.strangchat.in",   // 👈 ADD THIS
+    "https://www.strangerschat.fun",   // 👈 ADD THIS
     "http://localhost:3000"
   ],
   methods: ["POST", "GET"]
