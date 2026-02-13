@@ -30,6 +30,9 @@ app.use(cors({
 
 // Routes
 app.use("/send", contactRoute);
+app.use("/send/all", contactRoute);
+
+
 
 // HTTP + Socket.IO
 const server = http.createServer(app);
