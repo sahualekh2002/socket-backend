@@ -1,7 +1,10 @@
 const { Server } = require("socket.io");
 
 module.exports = function setupSocket(server) {
-  const io = new Server(server, { cors: { origin: "*" } });
+  const io = new Server(server, {
+    cors: { origin: "*" },
+    maxHttpBufferSize: 10 * 1024 * 1024, // 10MB
+  });
 
   let waitingUser = null;
   let onlineUsers = 0;
@@ -21,7 +24,11 @@ module.exports = function setupSocket(server) {
 
       if (socket.partner || socket.isWaiting) return;
 
-      if (waitingUser && waitingUser.id !== socket.id) {
+      if (
+        waitingUser &&
+        waitingUser.id !== socket.id &&
+        waitingUser.connected
+      ) {
         socket.partner = waitingUser;
         waitingUser.partner = socket;
 
@@ -42,10 +49,32 @@ module.exports = function setupSocket(server) {
       }
     });
 
-    socket.on("message", (msg) => {
-      if (!socket.partner) return;
-      socket.partner.emit("message", { sender: "stranger", text: msg });
-    });
+   socket.on("message", (msg) => {
+  if (!socket.partner || !socket.partner.connected) return;
+
+  socket.partner.emit("message", {
+    sender: "stranger",
+    type: "text",
+    content: msg,
+  });
+});
+
+
+    // 🔥 IMAGE MESSAGE
+    socket.on("sendImage", (imageData) => {
+  console.log("Image received from:", socket.id);
+
+  if (!socket.partner) {
+    console.log("No partner found");
+    return;
+  }
+
+  console.log("Sending image to:", socket.partner.id);
+
+  socket.partner.emit("receiveImage", imageData);
+});
+
+
 
     socket.on("typing", () => {
       if (socket.partner) socket.partner.emit("typing");
