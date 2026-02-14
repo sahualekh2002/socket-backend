@@ -21,7 +21,7 @@ app.use(cors({
 const server = http.createServer(app);
 
 // 🔥 USE chat.js SOCKET
-const setupSocket = require("../socket-server/socket/chat");
+const setupSocket = require("./socket/chat");
 setupSocket(server);
 
 const PORT = process.env.PORT || 4000;
