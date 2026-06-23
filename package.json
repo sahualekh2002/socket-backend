@@ -1,0 +1,34 @@
+{
+  "name": "socket-server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.4",
+    "emoji-picker-react": "^4.16.1",
+    "express": "^5.2.1",
+    "multer": "^2.0.2",
+    "mysql2": "^3.17.1",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^8.0.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "web-push": "^3.6.7"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sahualekh2002/socket-backend.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sahualekh2002/socket-backend/issues"
+  },
+  "homepage": "https://github.com/sahualekh2002/socket-backend#readme"
+}
